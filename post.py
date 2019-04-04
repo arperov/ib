@@ -3,7 +3,7 @@
 import cgi
 import cgitb
 #cgitb.enable(display=0, logdir='/var/log/httpd/cgi_err/')
-cgitb.enable()
+#cgitb.enable()
 
 import MySQLdb
 import datetime
@@ -15,6 +15,34 @@ import io
 import os
 
 #print('Content-Type: text/html\n\n')
+
+def purge_thread(thread, cursor):
+    # Fetch info on files to be deleted
+    cursor.execute(
+        'SELECT posts.FILE_ID, files.EXT FROM posts '
+        'INNER JOIN files ON posts.FILE_ID=files.ID '
+        'WHERE posts.THREAD_ID = %s OR posts.ID = %s',
+        (thread, thread)
+    )
+
+    # Delete the files
+    for f in cursor.fetchall():
+        os.remove(f'files/{f[0]}.{f[1]}')
+        os.remove(f'files/{f[0]}s.{f[1]}')
+
+    # Purge files from the table
+    cursor.execute(f'DELETE FROM files WHERE ID={f[0]}')
+
+    # Delete all posts in the thread
+    cursor.execute(
+        'DELETE FROM posts WHERE THREAD_ID = %s OR ID = %s',
+        (thread, thread)
+    )
+
+    # Delete the thread
+    cursor.execute(f'DELETE FROM threads WHERE ID = {thread}')
+
+
 
 def create_thread():
     """Create a thread from the form recieved. A file and comment are required,
@@ -39,6 +67,14 @@ def create_thread():
     )
 
     cursor = conn.cursor()
+
+    # Purge the thread with the oldest last reply if already at MAX_THREADS
+    active_threads = cursor.execute('SELECT ID FROM threads')
+    if active_threads >= common.MAX_THREADS:
+        cursor.execute('SELECT ID FROM threads ORDER BY LAST_POST ASC LIMIT 1')
+        least_active = cursor.fetchone()
+        purge_thread(least_active[0], cursor)
+
 
     # Save image and store it in the file table
     file_id = common.store_file(form['file'], cursor, OP=True)
@@ -83,11 +119,12 @@ def create_thread():
     conn.commit()
     conn.close()
 
+    return OP
 
 
-create_thread()
 print(
     'Status: 303 See other\n'
-    'Location: board.py\n'
+    'Location: thread.py?thread_id=%s\n' 
+    % create_thread()
 )
 

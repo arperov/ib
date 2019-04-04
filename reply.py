@@ -68,21 +68,25 @@ def reply():
         p_values
     )
 
-    # Update the time of last post for the thread
-    cursor.execute(
-        'UPDATE threads SET LAST_POST = %s WHERE ID = %s',
-        (p_values[0], thread_id)
-    )
+    # Update the time of last post for the thread unless we reached the bump
+    # limit
+    bumps = cursor.execute(f'SELECT ID FROM posts WHERE THREAD_ID={thread_id}')
+    if bumps <= common.MAX_REPLIES:
+        cursor.execute(
+            'UPDATE threads SET LAST_POST = %s WHERE ID = %s',
+            (p_values[0], thread_id)
+        )
 
     cursor.close()
     conn.commit()
     conn.close()
 
+    return thread_id
 
-reply()
+
 print(
     'Status: 303 See other\n'
-    # TODO: Change to the appropriate thread page
-    'Location: board.py\n'
+    'Location: thread.py?thread_id=%s\n'
+    % reply()
 )
 

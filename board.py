@@ -47,7 +47,6 @@ def write_board():
         passwd  = conf.SQL_PASS,
         db      = conf.SQL_DB
     )
-    conn.get_warnings = True
     cursor = conn.cursor(MySQLdb.cursors.DictCursor)
 
     cursor.execute('SELECT ID, SUBJECT FROM threads ORDER BY LAST_POST DESC')

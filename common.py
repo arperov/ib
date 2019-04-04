@@ -10,13 +10,45 @@ MAX_FILE_SIZE = 1 << 24 # 16 MB
 MAX_OP_IMG_WIDTH = 250
 MAX_IMG_WIDTH = 150
 
-def write_OP(t_dic, p_dic, f_dic, r_count, i_count):
+MAX_THREADS = 2
+MAX_REPLIES = 3
+
+
+def write_OP(t_dic, p_dic, f_dic, r_count, i_count, p_count=0, in_thread=False):
     f_name = f'{f_dic["NAME"]}.{f_dic["EXT"]}'
     f_path = f'files/{f_dic["ID"]}.{f_dic["EXT"]}'
     t_path = f'files/{f_dic["ID"]}s.{f_dic["EXT"]}'
     name = 'Anonymous' if not p_dic['USERNAME'] else p_dic['USERNAME']
     subj = '' if not t_dic['SUBJECT'] else t_dic['SUBJECT']
+
+    in_thread_summ = \
+        '<span class="summary">'\
+            f'{r_count} replies and {i_count} images by {p_count} '\
+                'posters total. '\
+            f'<a href="thread.py?thread_id={t_dic["ID"]}" '\
+                'class=replylink"> Click here'\
+            '</a> to view.'\
+        '</span>'
+
+    outside_summ = \
+            '<div class="nav_bar">'\
+                '[<a href="board.py">Return</a>]'\
+                '<span class="t_stats">'\
+                    f'<span class="t_replies" title="Replies">{r_count}</span>'\
+                    ' / '\
+                    f'<span class="t_images" title="Images">{i_count}</span>'\
+                    ' / '\
+                    f'<span class="t_posters" title="Posters">{p_count}</span>'\
+            '</div>'\
+            '<hr>'
+
+    if in_thread:
+        in_thread_summ = ''
+    else:
+        outside_summ = ''
+
     print(
+        f'{outside_summ}'
         f'<div class="op_container" id="pc{t_dic["ID"]}">'
             f'<div class="op" id="p{t_dic["ID"]}">'
                 f'<div class="file" id="f{t_dic["ID"]}">'
@@ -48,12 +80,7 @@ def write_OP(t_dic, p_dic, f_dic, r_count, i_count):
                 f'<blockquote class="post_text" id="t{t_dic["ID"]}">'
                     f'{p_dic["TEXT"]}'
                 '</blockquote>'
-                '<span class="summary">'
-                    f'{r_count} replies and {i_count} images total. '
-                    f'<a href="thread.py?thread_id={t_dic["ID"]}" '
-                        'class=replylink"> Click here'
-                    '</a> to view.'
-                '</span>'
+                f'{in_thread_summ}'
             '</div>'
         '</div>'
     )
@@ -99,7 +126,9 @@ def write_post(t_dic, p_dic, f_dic):
         '</div>'
     )
 
-def write_thread(thread, cursor):
+def write_thread(thread, cursor, in_thread=False):
+    if not thread:
+        return
     print(f'<div class="thread" id="t{thread["ID"]}">')
     cursor.execute(
         'SELECT ID, TIME, USERNAME, TEXT, FILE_ID FROM posts WHERE ID = %s',
@@ -120,17 +149,29 @@ def write_thread(thread, cursor):
         (thread['ID'], )
     )
 
-    write_OP(thread, p_dic, f_dic, reply_cnt, img_cnt)
-
-    # Write replies
-    cursor.execute(
-        'SELECT * FROM ( '
-            'SELECT ID, TIME, USERNAME, TEXT, FILE_ID '
-            'FROM posts WHERE THREAD_ID = %s '
-            'ORDER BY TIME DESC LIMIT 5 '
-        ') x ORDER BY TIME ASC',
+    p_count = cursor.execute(
+        'SELECT DISTINCT IP FROM posts WHERE THREAD_ID=%s',
         (thread['ID'], )
     )
+
+    write_OP(thread, p_dic, f_dic, reply_cnt, img_cnt, p_count, in_thread)
+
+    # Write replies
+    if in_thread:
+        cursor.execute(
+            'SELECT ID, TIME, USERNAME, TEXT, FILE_ID '
+            'FROM posts WHERE THREAD_ID = %s',
+            (thread['ID'], )
+        )
+    else:
+        cursor.execute(
+            'SELECT * FROM ( '
+                'SELECT ID, TIME, USERNAME, TEXT, FILE_ID '
+                'FROM posts WHERE THREAD_ID = %s '
+                'ORDER BY TIME DESC LIMIT 5 '
+            ') x ORDER BY TIME ASC',
+            (thread['ID'], )
+        )
     for post in cursor.fetchall():
         cursor.execute('SELECT * FROM files WHERE ID = %s', (post['FILE_ID'],))
         write_post(thread, post, cursor.fetchone())

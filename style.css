@@ -57,6 +57,10 @@ input[type="file"] {
     display: inline;
 }
 
+#reply_name {
+    display: inline;
+}
+
 .cstm_btn {
     display: inline;
     width: auto;
@@ -170,4 +174,14 @@ hr {
 a {
     color: #2aa198;
 }
+
+
+.nav_bar {
+    font-weight: bold;
+}
+
+.t_stats {
+    float: right;
+}
+
 
