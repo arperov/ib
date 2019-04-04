@@ -12,10 +12,9 @@ cgitb.enable()
 
 def write_reply_form(thread_id, prefill_text=''):
     print(
-        '<link rel="stylesheet" type="text/css" href="style.css">'
         '<div class="container">'
             '<center><h2 class="title">Reply</h2></center>'
-            '<form action="reply.py" method="post" id="reply_form" enctype="multipart/form-data">'
+            '<form action="/cgi-bin/reply.py" method="post" id="reply_form" enctype="multipart/form-data">'
                 f'<input type="hidden" name="thread_id" value="{thread_id}">'
                 '<div id="reply_name"> <span>Name</span>'
                     '<input type="text">'
@@ -43,6 +42,8 @@ def write_thread():
 
     print('Content-Type: text/html\n\n');
     print('<html>')
+    print('<link rel="stylesheet" type="text/css" href="/cgi-bin/style.css">')
+    common.write_banner()
     write_reply_form(
         form['thread_id'].value,
         form['prefill_text'].value if 'prefill_text' in form and form['prefill_text'].value is not None else ''

@@ -1,8 +1,9 @@
 import sys
 import MySQLdb
 from wand.image import Image
+from wand.font import Font
 import cgitb
-cgitb.enable(display=0, logdir='/var/log/httpd/cgi_err/')
+#cgitb.enable(display=0, logdir='/var/log/httpd/cgi_err/')
 
 # The value to which THREAD_ID is set when the post is the OP
 SQL_CONST_OP = 0
@@ -46,12 +47,12 @@ def store_file(f, cursor, OP=False):
     )
 
     # Save image
-    img.save(filename='files/%s.%s' % (cursor.lastrowid, ext))
+    img.save(filename='/var/www/cgi-bin/files/%s.%s' % (cursor.lastrowid, ext))
 
     # Create a thmbnail
     img.transform(
         resize=str(MAX_IMG_WIDTH if not OP else MAX_OP_IMG_WIDTH) + 'x')
-    img.save(filename='files/%ss.%s' % (cursor.lastrowid, ext))
+    img.save(filename='/var/www/cgi-bin/files/%ss.%s' % (cursor.lastrowid, ext))
 
     return cursor.lastrowid
 
@@ -61,7 +62,7 @@ def write_error(msg):
             '<html>'
             '<center>'
             '<font color="red"><h2>ERROR: %s</h2></font>'
-            '<h3>[<a href="board.py" title="return">return</a>]</h3>'
+            '<h3>[<a href="/cgi-bin/board.py" title="return">return</a>]</h3>'
             '</center>'
             '</html>'
             %
@@ -69,10 +70,24 @@ def write_error(msg):
     )
     sys.exit(0)
 
+def write_banner():
+    img = Image(width=250, height=100, pseudo='plasma:fractal')
+    f = Font(path='/cgi-bin/sarial.ttf', size=32, color="#d33682")
+    img.caption(text='ibbb.me', font=f, gravity='south_east')
+    img.save(filename='/var/www/cgi-bin/files/banner.png')
+    print(
+        '<div class="banner">'
+            '<center>'
+            '<img src="/cgi-bin/files/banner.png">'
+            '</center>'
+        '</div>'
+    )
+
+
 def write_OP(t_dic, p_dic, f_dic, r_count, i_count, p_count=0, in_thread=False):
     f_name = f'{f_dic["NAME"]}.{f_dic["EXT"]}'
-    f_path = f'files/{f_dic["ID"]}.{f_dic["EXT"]}'
-    t_path = f'files/{f_dic["ID"]}s.{f_dic["EXT"]}'
+    f_path = f'/cgi-bin/files/{f_dic["ID"]}.{f_dic["EXT"]}'
+    t_path = f'/cgi-bin/files/{f_dic["ID"]}s.{f_dic["EXT"]}'
     name = 'Anonymous' if not p_dic['USERNAME'] else p_dic['USERNAME']
     subj = '' if not t_dic['SUBJECT'] else t_dic['SUBJECT']
     if 'REFS' in p_dic and p_dic['REFS'] is not None:
@@ -87,14 +102,14 @@ def write_OP(t_dic, p_dic, f_dic, r_count, i_count, p_count=0, in_thread=False):
         '<span class="summary">'\
             f'{r_count} replies and {i_count} images by {p_count} '\
                 'posters total. '\
-            f'<a href="thread.py?thread_id={t_dic["ID"]}" '\
+            f'<a href="/cgi-bin/thread.py?thread_id={t_dic["ID"]}" '\
                 'class=replylink"> Click here'\
             '</a> to view.'\
         '</span>'
 
     outside_summ = \
             '<div class="nav_bar">'\
-                '[<a href="board.py">Return</a>]'\
+                '[<a href="/cgi-bin/board.py">Return</a>]'\
                 '<span class="t_stats">'\
                     f'<span class="t_replies" title="Replies">{r_count}</span>'\
                     ' / '\
@@ -132,14 +147,14 @@ def write_OP(t_dic, p_dic, f_dic, r_count, i_count, p_count=0, in_thread=False):
                         'No.'
                         # TODO: enter the post ID into the textarea
                         f'<a '
-                        f'href="thread.py?thread_id={t_dic["ID"]}&prefill_text=>>{p_dic["ID"]}" '
+                        f'href="/cgi-bin/thread.py?thread_id={t_dic["ID"]}&prefill_text=>>{p_dic["ID"]}" '
                             f'title="Reply to this post">{t_dic["ID"]}</a>'
                     '</span>'
                     '<span>'
-                        f' [<a href="thread.py?thread_id={t_dic["ID"]}"'
+                        f' [<a href="/cgi-bin/thread.py?thread_id={t_dic["ID"]}"'
                             'class="replylink">Reply</a>]'
                     '</span>'
-                    f'<span id="quotes"> {quotes} </span>'
+                    f'<span class="quotes">{quotes}</span>'
                 '</div>'
                 f'<blockquote class="post_text" id="t{t_dic["ID"]}">'
                     f'{p_dic["TEXT"]}'
@@ -153,8 +168,8 @@ def write_post(t_dic, p_dic, f_dic):
     file_str = ''
     if f_dic:
         f_name = f'{f_dic["NAME"]}.{f_dic["EXT"]}'
-        f_path = f'files/{f_dic["ID"]}.{f_dic["EXT"]}'
-        t_path = f'files/{f_dic["ID"]}s.{f_dic["EXT"]}'
+        f_path = f'/cgi-bin/files/{f_dic["ID"]}.{f_dic["EXT"]}'
+        t_path = f'/cgi-bin/files/{f_dic["ID"]}s.{f_dic["EXT"]}'
         file_str = \
             f'<div class="file" id="f{p_dic["ID"]}">' \
                 f'<div class="file_info" id="fi{p_dic["ID"]}">' \
@@ -173,7 +188,7 @@ def write_post(t_dic, p_dic, f_dic):
             for x in p_dic['REFS'].split()
         })
     else:
-        quotes = 'XXX'
+        quotes = ''
     name = 'Anonymous' if not p_dic['USERNAME'] else p_dic['USERNAME']
     print(
         f'<div class="reply_container" id="pc{p_dic["ID"]}">'
@@ -186,10 +201,10 @@ def write_post(t_dic, p_dic, f_dic):
                         'No.'
                         # TODO: enter the post ID into the textarea
                         '<a '
-                        f'href="thread.py?thread_id={t_dic["ID"]}&prefill_text=>>{p_dic["ID"]}" '
+                        f'href="/cgi-bin/thread.py?thread_id={t_dic["ID"]}&prefill_text=>>{p_dic["ID"]}" '
                             f'title="Reply to this post">{p_dic["ID"]}</a>'
                     '</span>'
-                    f'<span id="quotes"> {quotes} </span>'
+                    f'<span class="quotes">{quotes}</span>'
                     f'{file_str}'
                 '</div>'
                 f'<blockquote class="post_text" id="t{t_dic["ID"]}">'

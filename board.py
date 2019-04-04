@@ -6,14 +6,13 @@ import cgitb
 cgitb.enable(display=0, logdir='/var/log/httpd/cgi_err/')
 import common
 import config as conf
+#print('Content-Type: text/html\n\n');
 
 def write_post_form():
     print(
-        #'<html>'
-        '<link rel="stylesheet" type="text/css" href="style.css">'
         '<div class="container">'
             '<center><h2 class="title">Start a New Thread</h2></center>'
-            '<form action="post.py" method="post" id="post_form" enctype="multipart/form-data">'
+            '<form action="/cgi-bin/post.py" method="post" id="post_form" enctype="multipart/form-data">'
                 '<div id="name"> <span>Name</span>'
                     '<input type="text" name="name">'
                 '</div>'
@@ -31,14 +30,15 @@ def write_post_form():
             '</form>'
         '</div>'
         '<hr>'
-        #'</html>'
     )
 
 def write_board():
     print(
         'Content-Type: text/html\n\n'
         '<html>'
+        '<link rel="stylesheet" type="text/css" href="/cgi-bin/style.css">'
     );
+    common.write_banner()
     write_post_form()
 
 

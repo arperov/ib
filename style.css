@@ -1,3 +1,4 @@
+
 body {
     color: #839496;
     background-color: #002b36;
@@ -189,4 +190,12 @@ a {
     float: right;
 }
 
+.quotes {
+    margin: 5px 5px 0 10px;
+}
+
+.banner {
+    margin: 20px 0px 20px 0px;
+    height: 100px;
+}
 
