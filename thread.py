@@ -6,24 +6,28 @@ import cgitb
 cgitb.enable(display=0, logdir='/var/log/httpd/cgi_err/')
 
 
-thread_id = 57
+form = cgi.FieldStorage()
+# Make sure a thread ID is specified
+if 'thread_id' not in form or not form['thread_id'].value:
+    common.write_error('No thread specified.')
 
 print('Content-Type: text/html\n\n');
 
 print(
     '<html>'
-    #'<link rel="stylesheet" type="text/css" href="style.css">'
+    '<link rel="stylesheet" type="text/css" href="style.css">'
     '<div class="container">'
         '<h2 class="title">Reply</h2>'
         '<form action="reply.py" method="post" id="reply_form" enctype="multipart/form-data">'
-            '<input type="hidden" name="thread_id" value="%s">'
+            f'<input type="hidden" name="thread_id" value="{form["thread_id"].value}">'
             '<div id="name"> <span>Name</span>'
             '    <input type="text" name="name">'
             '</div>'
-            '<div id="email"> <span>Email</span>'
-            '    <input type="text" name="email">'
-            '</div>'
-            '<span>File</span><input type="file" name="file" accept="image/*">'
+            '<span>File</span>'
+                '<label for="file_btn" class="cstm_btn">'
+                '<span>Select File</span>'
+                '</label>'
+                '<input type="file" name="file" id="file_btn" accept="image/*">'
             '<div id="comment"> <span>Comment</span>'
             '    <textarea name="text" form="reply_form"></textarea>'
             '</div>'
@@ -32,5 +36,4 @@ print(
     '</div>'
     '<hr>'
     '</html>'
-    % thread_id
 )

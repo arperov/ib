@@ -4,6 +4,7 @@ import cgi
 import cgitb
 #cgitb.enable(display=0, logdir='/var/log/httpd/cgi_err/')
 import datetime
+import os
 
 import MySQLdb
 
@@ -39,14 +40,15 @@ def reply():
     # Make sure thread exists
     cursor.execute('SELECT ID FROM threads WHERE ID=%s', (thread_id,))
     if cursor.rowcount == 0:
-        common.write_error('Thread does not exist')
+        common.write_error(f'Thread ({thread_id}) does not exist')
 
-    p_fields = 'TIME, TEXT, THREAD_ID'
-    p_phldrs = '%s, %s, %s'
+    p_fields = 'TIME, TEXT, THREAD_ID, IP'
+    p_phldrs = '%s, %s, %s, %s'
     p_values = (
         datetime.datetime.now(),
-        form['text'].value,
-        thread_id
+        form['text'].value.replace('\n', '<br />'),
+        thread_id,
+        cgi.escape(os.environ['REMOTE_ADDR'])
     )
 
     if 'file' in form and form['file'].value:
@@ -55,6 +57,10 @@ def reply():
         p_fields += ', FILE_ID'
         p_phldrs += ', %s'
         p_values += (file_id, )
+    if 'name' in form and form['name'].value:
+        p_fields += ', USERNAME'
+        p_phldrs += ', %s'
+        p_values += (form['name'].value, )
 
     # Insert the post into 'posts' table
     cursor.execute(

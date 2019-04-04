@@ -3,64 +3,18 @@
 import cgi
 import cgitb
 #cgitb.enable(display=0, logdir='/var/log/httpd/cgi_err/')
+cgitb.enable()
 
 import MySQLdb
 import datetime
-from wand.image import Image
 
 import common
 import config as conf
 
 import io
-
-MAX_FILE_SIZE = 1 << 24
-MAX_IMG_WIDTH = 250
+import os
 
 #print('Content-Type: text/html\n\n')
-
-def store_file(f, cursor):
-    """Store image located in MiniFieldStorage 'f', alongside its thumbnail of
-    width 250, and add it to the files table accessed through 'cursor'. If the
-    size of file exceedes MAX_FILE_SIZE an error is shown and the process is
-    aborted.
-    """
-    # TODO: Make sure the height does not get out of hand
-
-    f_size = f.file.seek(0,2)
-    f.file.seek(0,0)
-
-    # Make sure the file is not too large
-    if f_size > MAX_FILE_SIZE:
-        common.write_error(
-            'Filesize exceeds maximum (%dMB).'
-            %
-            (MAX_FILE_SIZE // pow(1024, 2))
-        )
-
-    img = Image(blob=f.file.read())
-
-    # Add the image to the file table
-    fp = f.filename.find('.')
-    name    = f.filename[0:fp]
-    ext     = f.filename[fp + 1:len(f.filename)] 
-    cursor.execute(
-        'INSERT INTO files (NAME, EXT, SIZE, RES) VALUES (%s, %s, %s, %s)',
-        (name, ext, f_size, '%dx%d' % (img.size[0], img.size[1]))
-    )
-
-    # Save image
-    img.save(filename='files/%s.%s' % (cursor.lastrowid, ext))
-
-    # Create a thmbnail
-    img.transform(resize='250x')
-    img.save(filename='files/%ss.%s' % (cursor.lastrowid, ext))
-
-    ## Create thumbnail
-    #img = Image(filename='files/1.png')
-    #img.transform(resize='250x')
-    #img.save(filename='asdf2.png')
-    return cursor.lastrowid
-
 
 def create_thread():
     """Create a thread from the form recieved. A file and comment are required,
@@ -87,16 +41,17 @@ def create_thread():
     cursor = conn.cursor()
 
     # Save image and store it in the file table
-    file_id = store_file(form['file'], cursor)
+    file_id = common.store_file(form['file'], cursor, OP=True)
 
     # Set mandatory fields
-    p_fields = 'TIME, TEXT, THREAD_ID, FILE_ID'
-    p_phldrs = '%s, %s, %s, %s'
+    p_fields = 'TIME, TEXT, THREAD_ID, FILE_ID, IP'
+    p_phldrs = '%s, %s, %s, %s, %s'
     p_values = (
         datetime.datetime.now(),
-        form['text'].value,
+        form['text'].value.replace('\n', '<br />'),
         common.SQL_CONST_OP,
-        file_id
+        file_id,
+        cgi.escape(os.environ['REMOTE_ADDR'])
     )
 
     # Set optional fields
@@ -104,10 +59,6 @@ def create_thread():
         p_fields += ', USERNAME'
         p_phldrs += ', %s'
         p_values += (form['name'].value, )
-    if 'email' in form and form['email'].value:
-        p_fields += ', EMAIL'
-        p_phldrs += ', %s'
-        p_values += (form['email'].value, )
 
     # Store the post in the post table
     cursor.execute(
@@ -129,7 +80,6 @@ def create_thread():
         )
 
     cursor.close()
-
     conn.commit()
     conn.close()
 
