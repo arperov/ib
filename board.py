@@ -41,6 +41,7 @@ def write_board():
     );
     write_post_form()
 
+
     conn = MySQLdb.connect(
         host    = conf.SQL_HOST,
         user    = conf.SQL_USER,

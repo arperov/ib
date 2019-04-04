@@ -13,6 +13,7 @@ import config as conf
 
 import io
 import os
+import re
 
 #print('Content-Type: text/html\n\n')
 
@@ -79,12 +80,21 @@ def create_thread():
     # Save image and store it in the file table
     file_id = common.store_file(form['file'], cursor, OP=True)
 
+    # Handle greentext
+    text = re.sub(
+        r'(^[^>]*)(>[^>]*$)',
+        r'\1<span class="greentext">\2</span>',
+        form['text'].value,
+        flags=re.MULTILINE
+    )
+    text = text.replace('\n', '<br />')
+
     # Set mandatory fields
     p_fields = 'TIME, TEXT, THREAD_ID, FILE_ID, IP'
     p_phldrs = '%s, %s, %s, %s, %s'
     p_values = (
         datetime.datetime.now(),
-        form['text'].value.replace('\n', '<br />'),
+        text,
         common.SQL_CONST_OP,
         file_id,
         cgi.escape(os.environ['REMOTE_ADDR'])

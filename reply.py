@@ -3,8 +3,10 @@
 import cgi
 import cgitb
 #cgitb.enable(display=0, logdir='/var/log/httpd/cgi_err/')
+cgitb.enable()
 import datetime
 import os
+import re
 
 import MySQLdb
 
@@ -42,11 +44,33 @@ def reply():
     if cursor.rowcount == 0:
         common.write_error(f'Thread ({thread_id}) does not exist')
 
+    # Handle link quotes
+    # TODO: handle cross thread links
+    # TODO: filter out broken links
+    text = form['text'].value
+    quotes = re.findall(r'>>(\d+)', text, flags=re.MULTILINE)
+    if quotes:
+        text = re.sub(
+            r'(>>(\d+))',
+            r'<a href="#p\2">\1</a>',
+            text,
+            flags=re.MULTILINE
+        )
+
+    # Handle greentext
+    text = re.sub(
+        r'(^[^>]*)(>[^>]*$)',
+        r'\1<span class="greentext">\2</span>',
+        text,
+        flags=re.MULTILINE
+    )
+    text = text.replace('\n', '<br />')
+
     p_fields = 'TIME, TEXT, THREAD_ID, IP'
     p_phldrs = '%s, %s, %s, %s'
     p_values = (
         datetime.datetime.now(),
-        form['text'].value.replace('\n', '<br />'),
+        text,
         thread_id,
         cgi.escape(os.environ['REMOTE_ADDR'])
     )
@@ -67,6 +91,14 @@ def reply():
         'INSERT INTO posts (%s) VALUES (%s)' % (p_fields, p_phldrs),
         p_values
     )
+
+    # Update posts that have been referenced 
+    post_id = ' ' + str(cursor.lastrowid)
+    for quote in quotes:
+        cursor.execute(
+            'UPDATE posts SET REFS = CONCAT(REFS, %s) WHERE ID = %s',
+            (post_id, quote)
+        )
 
     # Update the time of last post for the thread unless we reached the bump
     # limit

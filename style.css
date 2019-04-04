@@ -97,6 +97,11 @@ input[type="file"] {
     color: #cb4b16;
 }
 
+.greentext {
+    color: #859900;
+}
+
+
 input[type="text"], textarea {
     //background-color: #586e75;
     font-family: arial,helvetica,sans-serif;

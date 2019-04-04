@@ -8,7 +8,9 @@ import config as conf
 #cgitb.enable(display=0, logdir='/var/log/httpd/cgi_err/')
 cgitb.enable()
 
-def write_reply_form(thread_id):
+#print('Content-Type: text/html\n\n');
+
+def write_reply_form(thread_id, prefill_text=''):
     print(
         '<link rel="stylesheet" type="text/css" href="style.css">'
         '<div class="container">'
@@ -23,7 +25,9 @@ def write_reply_form(thread_id):
                     '</label>'
                     '<input type="file" name="file" id="file_btn" accept="image/*">'
                 '<div id="comment"> <span>Comment</span>'
-                    '<textarea name="text" form="reply_form"></textarea>'
+                    '<textarea name="text" form="reply_form">'
+                        f'{prefill_text}'
+                    '</textarea>'
                 '</div>'
                 '<input type="submit" id="submit_btn" value="post">'
             '</form>'
@@ -39,7 +43,10 @@ def write_thread():
 
     print('Content-Type: text/html\n\n');
     print('<html>')
-    write_reply_form(form['thread_id'].value)
+    write_reply_form(
+        form['thread_id'].value,
+        form['prefill_text'].value if 'prefill_text' in form and form['prefill_text'].value is not None else ''
+    )
 
     conn = MySQLdb.connect(
         host    = conf.SQL_HOST,
